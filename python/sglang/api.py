@@ -71,6 +71,8 @@ def gen(
     dtype: Optional[type] = None,
     choices: Optional[List[str]] = None,
     regex: Optional[str] = None,
+    forward_only: bool = False,
+    last_token_id: Optional[int] = None,
 ):
     if choices:
         return SglSelect(name, choices, 0.0 if temperature is None else temperature)
@@ -94,6 +96,8 @@ def gen(
         ignore_eos,
         dtype,
         regex,
+        forward_only,
+        last_token_id,
     )
 
 

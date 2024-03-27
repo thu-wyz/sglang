@@ -212,6 +212,7 @@ class StreamExecutor:
 
         # For fork/join
         self.fork_start_text_pos = None
+        self.logits_ = None
 
         # Worker thread
         self.use_thread = use_thread
@@ -282,6 +283,10 @@ class StreamExecutor:
     def text(self):
         self.sync()
         return self.text_
+    
+    def logits(self):
+        self.sync()
+        return self.logits_
 
     def messages(self):
         self.sync()
@@ -379,6 +384,8 @@ class StreamExecutor:
                 stop = sampling_params.stop
                 max_new_tokens = sampling_params.max_new_tokens
                 meta_info = {}
+                if sampling_params.forward_only:
+                    raise Exception("Not implemented!")
 
                 def regen():
                     sampling_params.max_new_tokens = max(
@@ -429,9 +436,10 @@ class StreamExecutor:
                 comp, meta_info = self.backend.generate(
                     self, sampling_params=sampling_params
                 )
-
-            self.text_ += comp
-
+            if sampling_params.forward_only == False:
+                self.text_ += comp
+            else:
+                self.logits_ = comp
             self.variables[name] = comp
             self.meta_info[name] = meta_info
             self.variable_event[name].set()
@@ -444,7 +452,10 @@ class StreamExecutor:
 
             self.variables[name] = ""
             for comp, meta_info in generator:
-                self.text_ += comp
+                if sampling_params.forward_only == False:
+                    self.text_ += comp
+                else:
+                    self.logits_ = comp
                 self.variables[name] += comp
                 self.meta_info[name] = meta_info
                 self.stream_var_event[name].set()
@@ -576,6 +587,8 @@ class StreamExecutor:
             "ignore_eos",
             "dtype",
             "regex",
+            "forward_only",
+            "last_token_id",
         ]:
             value = getattr(sampling_params, item, None)
             if value is not None:
@@ -650,6 +663,9 @@ class ProgramState:
 
     def text(self):
         return self.stream_executor.text()
+    
+    def logits(self):
+        return self.stream_executor.logits()
 
     def messages(self):
         return self.stream_executor.messages()

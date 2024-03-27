@@ -49,6 +49,8 @@ class Req:
         self.finished = False
         self.finish_reason = None
         self.hit_stop_str = None
+        self.last_logits = []
+        self.forward_only = False
 
         self.extend_input_len = 0
         self.prefix_indices = []
@@ -160,6 +162,7 @@ class Batch:
     out_cache_cont_start: torch.Tensor = None
     out_cache_cont_end: torch.Tensor = None
     return_logprob: bool = False
+    forward_only: bool = False
 
     # for multimodal
     pixel_values: List[torch.Tensor] = None
@@ -440,7 +443,7 @@ class Batch:
         )
         self.out_cache_loc = self.out_cache_cont_start = self.out_cache_cont_end = None
         self.return_logprob = any(req.return_logprob for req in self.reqs)
-
+        self.forward_only = other.forward_only
         for item in [
             "temperatures",
             "top_ps",

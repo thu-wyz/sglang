@@ -23,6 +23,10 @@ class GenerateReqInput:
     return_text_in_logprobs: bool = False
     # Whether to stream output
     stream: bool = False
+    # Whether only do forward
+    forward_only: bool = False
+    # Whether truncate to force last token
+    last_token_id: Optional[int] = None
 
     def post_init(self):
         is_single = isinstance(self.text, str)
@@ -30,6 +34,10 @@ class GenerateReqInput:
         if is_single:
             if self.sampling_params is None:
                 self.sampling_params = {}
+            if "forward_only" in self.sampling_params:
+                self.forward_only = self.sampling_params["forward_only"]
+            if "last_token_id" in self.sampling_params:
+                self.last_token_id = self.sampling_params["last_token_id"]
             if self.rid is None:
                 self.rid = uuid.uuid4().hex
             if self.return_logprob is None:
@@ -48,6 +56,10 @@ class GenerateReqInput:
                 self.sampling_params = [{}] * num
             elif not isinstance(self.sampling_params, list):
                 self.sampling_params = [self.sampling_params] * num
+            if "forward_only" in self.sampling_params[0]:
+                self.forward_only = self.sampling_params[0]["forward_only"]
+            if "last_token_id" in self.sampling_params[0]:
+                self.last_token_id = self.sampling_params[0]["last_token_id"]
 
             if self.rid is None:
                 self.rid = [uuid.uuid4().hex for _ in range(num)]
@@ -77,6 +89,7 @@ class TokenizedGenerateReqInput:
     return_logprob: bool
     logprob_start_len: int
     stream: bool
+    forward_only: bool
 
 
 @dataclass
@@ -88,6 +101,8 @@ class BatchTokenIDOut:
     skip_special_tokens: List[bool]
     meta_info: List[Dict]
     finished: List[bool]
+    last_logits: List[List[float]]
+    forward_only: List[bool]
 
 
 @dataclass
@@ -96,6 +111,8 @@ class BatchStrOut:
     output_str: List[str]
     meta_info: List[Dict]
     finished: List[bool]
+    last_logits: List[List[float]]
+    forward_only: List[bool]
 
 
 @dataclass

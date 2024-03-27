@@ -70,6 +70,8 @@ class DetokenizerManager:
                         output_strs,
                         recv_obj.meta_info,
                         recv_obj.finished,
+                        recv_obj.last_logits,
+                        recv_obj.forward_only
                     )
                 )
             else:

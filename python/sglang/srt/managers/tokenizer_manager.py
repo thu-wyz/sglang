@@ -149,6 +149,12 @@ class TokenizerManager:
         if is_single:
             rid = obj.rid
             input_ids = self.tokenizer.encode(obj.text)
+            if obj.last_token_id is not None:
+                while len(input_ids) > 0:
+                    if input_ids[-1] != obj.last_token_id:
+                        input_ids = input_ids[:-1]
+                    else:
+                        break
             sampling_params = SamplingParams(**obj.sampling_params)
             if sampling_params.max_new_tokens != 0:
                 sampling_params.normalize(self.tokenizer)
@@ -175,6 +181,7 @@ class TokenizerManager:
                 return_logprob=obj.return_logprob,
                 logprob_start_len=obj.logprob_start_len,
                 stream=obj.stream,
+                forward_only=obj.forward_only,
             )
             self.send_to_router.send_pyobj(tokenized_obj)
 
@@ -197,6 +204,12 @@ class TokenizerManager:
             for i in range(bs):
                 rid = obj.rid[i]
                 input_ids = self.tokenizer.encode(obj.text[i])
+                if obj.last_token_id is not None:
+                    while len(input_ids) > 0:
+                        if input_ids[-1] != obj.last_token_ids:
+                            input_ids = input_ids[:-1]
+                        else:
+                            break
                 sampling_params = SamplingParams(**obj.sampling_params[i])
                 if sampling_params.max_new_tokens != 0:
                     sampling_params.normalize(self.tokenizer)
@@ -218,6 +231,7 @@ class TokenizerManager:
                     return_logprob=obj.return_logprob[i],
                     logprob_start_len=obj.logprob_start_len[i],
                     stream=obj.stream,
+                    forward_only=obj.forward_only,
                 )
                 self.send_to_router.send_pyobj(tokenized_obj)
 
@@ -260,6 +274,8 @@ class TokenizerManager:
                     out_dict = {
                         "text": recv_obj.output_str[i],
                         "meta_info": recv_obj.meta_info[i],
+                        "last_logits": recv_obj.last_logits[i],
+                        "forward_only": recv_obj.forward_only[i],
                     }
                     state = self.rid_to_state[rid]
                     state.out_list.append(out_dict)

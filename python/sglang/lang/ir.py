@@ -27,6 +27,8 @@ class SglSamplingParams:
     # for constrained generation, not included in to_xxx_kwargs
     dtype: Optional[str] = None
     regex: Optional[str] = None
+    forward_only: bool = False
+    last_token_id: Optional[int] = None
 
     def clone(self):
         return SglSamplingParams(
@@ -93,6 +95,8 @@ class SglSamplingParams:
             "presence_penalty": self.presence_penalty,
             "ignore_eos": self.ignore_eos,
             "regex": self.regex,
+            "forward_only": self.forward_only,
+            "last_token_id": self.last_token_id,
         }
 
 
@@ -127,6 +131,8 @@ class SglFunction:
         ignore_eos: bool = False,
         stream: bool = False,
         backend=None,
+        forward_only: bool = False,
+        last_token_id = None,
         **kwargs,
     ):
         from sglang.lang.interpreter import run_program
@@ -140,6 +146,8 @@ class SglFunction:
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
             ignore_eos=ignore_eos,
+            forward_only=forward_only,
+            last_token_id=last_token_id,
         )
         backend = backend or global_config.default_backend
         return run_program(self, backend, args, kwargs, default_sampling_para, stream)
@@ -159,6 +167,8 @@ class SglFunction:
         backend=None,
         num_threads: Union[str, int] = "auto",
         progress_bar: bool = False,
+        forward_only: bool = False,
+        last_token_id = None,
     ):
         from sglang.lang.interpreter import run_program_batch
 
@@ -176,6 +186,8 @@ class SglFunction:
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
             ignore_eos=ignore_eos,
+            forward_only=forward_only,
+            last_token_id=last_token_id,
         )
         backend = backend or global_config.default_backend
         return run_program_batch(
@@ -350,6 +362,8 @@ class SglGen(SglExpr):
         ignore_eos,
         dtype,
         regex,
+        forward_only,
+        last_token_id,
     ):
         super().__init__()
         self.name = name
@@ -364,6 +378,8 @@ class SglGen(SglExpr):
             ignore_eos=ignore_eos,
             dtype=dtype,
             regex=regex,
+            forward_only=forward_only,
+            last_token_id=last_token_id,
         )
 
     def __repr__(self):

@@ -129,8 +129,11 @@ class RuntimeEndpoint(BaseBackend):
             verify=self.verify,
         )
         obj = res.json()
-        comp = obj["text"]
-        return comp, obj["meta_info"]
+        if obj["forward_only"]:
+            return obj["last_logits"], obj["meta_info"]
+        else:
+            comp = obj["text"]
+            return comp, obj["meta_info"]
 
     def generate_stream(
         self,
