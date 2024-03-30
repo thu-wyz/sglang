@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import torch
@@ -49,7 +49,8 @@ class Req:
         self.finished = False
         self.finish_reason = None
         self.hit_stop_str = None
-        self.last_logits = []
+        self.logits_require_id = None
+        self.scores = []
         self.forward_only = False
 
         self.extend_input_len = 0
@@ -163,6 +164,7 @@ class Batch:
     out_cache_cont_end: torch.Tensor = None
     return_logprob: bool = False
     forward_only: bool = False
+    logits_require_id: Optional[int] = None
 
     # for multimodal
     pixel_values: List[torch.Tensor] = None

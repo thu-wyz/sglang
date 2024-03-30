@@ -28,7 +28,7 @@ class SglSamplingParams:
     dtype: Optional[str] = None
     regex: Optional[str] = None
     forward_only: bool = False
-    last_token_id: Optional[int] = None
+    logits_require_id: Optional[int] = None
 
     def clone(self):
         return SglSamplingParams(
@@ -96,7 +96,7 @@ class SglSamplingParams:
             "ignore_eos": self.ignore_eos,
             "regex": self.regex,
             "forward_only": self.forward_only,
-            "last_token_id": self.last_token_id,
+            "logits_require_id": self.logits_require_id,
         }
 
 
@@ -132,7 +132,7 @@ class SglFunction:
         stream: bool = False,
         backend=None,
         forward_only: bool = False,
-        last_token_id = None,
+        logits_require_id = None,
         **kwargs,
     ):
         from sglang.lang.interpreter import run_program
@@ -147,7 +147,7 @@ class SglFunction:
             presence_penalty=presence_penalty,
             ignore_eos=ignore_eos,
             forward_only=forward_only,
-            last_token_id=last_token_id,
+            logits_require_id=logits_require_id,
         )
         backend = backend or global_config.default_backend
         return run_program(self, backend, args, kwargs, default_sampling_para, stream)
@@ -168,7 +168,7 @@ class SglFunction:
         num_threads: Union[str, int] = "auto",
         progress_bar: bool = False,
         forward_only: bool = False,
-        last_token_id = None,
+        logits_require_id = None,
     ):
         from sglang.lang.interpreter import run_program_batch
 
@@ -187,7 +187,7 @@ class SglFunction:
             presence_penalty=presence_penalty,
             ignore_eos=ignore_eos,
             forward_only=forward_only,
-            last_token_id=last_token_id,
+            logits_require_id=logits_require_id,
         )
         backend = backend or global_config.default_backend
         return run_program_batch(
@@ -363,7 +363,7 @@ class SglGen(SglExpr):
         dtype,
         regex,
         forward_only,
-        last_token_id,
+        logits_require_id,
     ):
         super().__init__()
         self.name = name
@@ -379,7 +379,7 @@ class SglGen(SglExpr):
             dtype=dtype,
             regex=regex,
             forward_only=forward_only,
-            last_token_id=last_token_id,
+            logits_require_id=logits_require_id,
         )
 
     def __repr__(self):

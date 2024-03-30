@@ -265,6 +265,7 @@ class ModelRpcServer(rpyc.Service):
         req.stream = recv_req.stream
         req.tokenizer = self.tokenizer
         req.forward_only = recv_req.forward_only
+        req.logits_require_id = recv_req.logits_require_id
 
         # Init regex fsm
         if req.sampling_params.regex is not None:
@@ -298,6 +299,7 @@ class ModelRpcServer(rpyc.Service):
             req.prefix_indices = prefix_indices
             req.last_node = last_node
             forward_only = req.forward_only
+            logits_require_id = req.logits_require_id
 
         # Get priority queue
         self.forward_queue = self.scheduler.get_priority_queue(self.forward_queue)
@@ -396,6 +398,7 @@ class ModelRpcServer(rpyc.Service):
             self.tree_cache,
         )
         new_batch.forward_only = forward_only
+        new_batch.logits_require_id = logits_require_id
         self.forward_queue = [x for x in self.forward_queue if x not in can_run_list]
         return new_batch
 
@@ -406,7 +409,6 @@ class ModelRpcServer(rpyc.Service):
         )
 
         logprobs = None
-        print("extend_num_tokens",batch.extend_num_tokens)
         if batch.extend_num_tokens != 0:
             # Forward
             logits, (
@@ -419,7 +421,18 @@ class ModelRpcServer(rpyc.Service):
             if prefill_logprobs is not None:
                 logprobs = prefill_logprobs.cpu().tolist()
                 normalized_logprobs = normalized_logprobs.cpu().tolist()
-
+            
+            if batch.logits_require_id:
+                if batch.logits_require_id == 8094:
+                    reqs = batch.reqs
+                    for i, req in enumerate(reqs):
+                        req.completion_tokens_wo_jump_forward += 1
+                        scores = logits[i].mean(dim=-1).sigmoid().cpu().tolist()
+                        req.output_ids = [0]
+                        req.scores = scores
+                        req.finished = True
+                self.handle_finished_requests(batch)
+                return
             next_token_ids, _ = batch.sample(logits)
             next_token_ids = next_token_ids.cpu().tolist()
         else:
@@ -438,10 +451,6 @@ class ModelRpcServer(rpyc.Service):
         for i, req in enumerate(reqs):
             req.completion_tokens_wo_jump_forward += 1
             req.output_ids = [next_token_ids[i]]
-            if logits is not None:
-                req.last_logits = logits[i].cpu().tolist()
-            if req.forward_only:
-                req.finished = True
             req.check_finished()
 
             if logprobs is not None:
@@ -539,7 +548,7 @@ class ModelRpcServer(rpyc.Service):
         output_skip_special_tokens = []
         output_meta_info = []
         output_finished = []
-        output_logits = []
+        output_scores = []
         output_forward_only = []
         finished_indices = []
         unfinished_indices = []
@@ -565,7 +574,7 @@ class ModelRpcServer(rpyc.Service):
                 output_skip_special_tokens.append(
                     req.sampling_params.skip_special_tokens
                 )
-                output_logits.append(req.last_logits)
+                output_scores.append(req.scores)
                 output_forward_only.append(req.forward_only)
 
                 meta_info = {
@@ -593,7 +602,7 @@ class ModelRpcServer(rpyc.Service):
                     output_skip_special_tokens,
                     output_meta_info,
                     output_finished,
-                    output_logits,
+                    output_scores,
                     output_forward_only,
                 )
             )

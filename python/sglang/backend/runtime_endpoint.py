@@ -130,7 +130,7 @@ class RuntimeEndpoint(BaseBackend):
         )
         obj = res.json()
         if obj["forward_only"]:
-            return obj["last_logits"], obj["meta_info"]
+            return obj["scores"], obj["meta_info"]
         else:
             comp = obj["text"]
             return comp, obj["meta_info"]

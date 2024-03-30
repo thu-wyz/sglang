@@ -27,6 +27,24 @@ class LogitsProcessor(nn.Module):
                 )
                 - 1
             )
+            index_count = []
+            if input_metadata.logits_require_id:
+                start = 0
+                for end in last_index:
+                    index_count.append((input_ids[start:end+1] == input_metadata.logits_require_id).sum())
+                    start = end + 1
+                select_hiddens = hidden_states[input_ids == input_metadata.logits_require_id]
+                hidden_states = None
+                select_logits = torch.matmul(select_hiddens, weight.T)
+                if self.tp_size > 1:
+                    select_logits = tensor_model_parallel_all_gather(select_logits)
+                select_logits = select_logits[:, : self.config.vocab_size]
+                start = 0
+                logits = []
+                for count in index_count:
+                    logits.append(select_logits[start:start+count])
+                    start += count
+                return logits, (None, None, None)   
 
         if not input_metadata.return_logprob:
             # When logprob is not requested, only compute the last logits.

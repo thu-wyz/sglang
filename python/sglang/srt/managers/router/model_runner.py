@@ -17,7 +17,7 @@ from vllm.model_executor.layers.quantization.gptq import GPTQConfig
 from vllm.model_executor.layers.quantization.marlin import MarlinConfig
 from vllm.model_executor.model_loader import _set_default_torch_dtype
 from vllm.model_executor.parallel_utils.parallel_state import initialize_model_parallel
-
+from typing import Optional
 import importlib
 import pkgutil
 
@@ -87,6 +87,7 @@ class InputMetadata:
 
     other_kv_index: torch.Tensor = None
     return_logprob: bool = False
+    logits_require_id: Optional[int] = None
 
     # for flashinfer
     qo_indptr: torch.Tensor = None
@@ -184,6 +185,7 @@ class InputMetadata:
         out_cache_cont_start=None,
         out_cache_cont_end=None,
         return_logprob=False,
+        logits_require_id=None,
     ):
         batch_size = len(req_pool_indices)
         start_loc = torch.zeros((batch_size,), dtype=torch.int32, device="cuda")
@@ -232,6 +234,7 @@ class InputMetadata:
             out_cache_cont_start=out_cache_cont_start,
             out_cache_cont_end=out_cache_cont_end,
             return_logprob=return_logprob,
+            logits_require_id=logits_require_id,
             other_kv_index=other_kv_index,
         )
 
@@ -400,6 +403,7 @@ class ModelRunner:
         position_ids_offsets,
         out_cache_loc,
         return_logprob,
+        logits_require_id,
     ):
         input_metadata = InputMetadata.create(
             self,
@@ -411,6 +415,7 @@ class ModelRunner:
             position_ids_offsets=position_ids_offsets,
             out_cache_loc=out_cache_loc,
             return_logprob=return_logprob,
+            logits_require_id=logits_require_id,
         )
         return self.model.forward(input_ids, input_metadata.positions, input_metadata)
 
@@ -491,6 +496,17 @@ class ModelRunner:
                 "return_logprob": return_logprob,
             }
             return self.forward_extend_multi_modal(**kwargs)
+        elif forward_mode == ForwardMode.EXTEND:
+            kwargs = {
+                "input_ids": batch.input_ids,
+                "req_pool_indices": batch.req_pool_indices,
+                "seq_lens": batch.seq_lens,
+                "prefix_lens": batch.prefix_lens,
+                "position_ids_offsets": batch.position_ids_offsets,
+                "out_cache_loc": batch.out_cache_loc,
+                "return_logprob": return_logprob,
+                "logits_require_id": batch.logits_require_id,
+            }
         else:
             kwargs = {
                 "input_ids": batch.input_ids,

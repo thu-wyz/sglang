@@ -20,7 +20,7 @@ class SamplingParams:
         dtype: Optional[str] = None,
         regex: Optional[str] = None,
         forward_only: bool = False,
-        last_token_id: Optional[int] = None,
+        logits_require_id: Optional[int] = None,
     ) -> None:
         self.temperature = temperature
         self.top_p = top_p
@@ -34,7 +34,7 @@ class SamplingParams:
         self.dtype = dtype
         self.regex = regex
         self.forward_only = forward_only
-        self.last_token_id = last_token_id
+        self.logits_require_id = logits_require_id
 
         # Process some special cases
         if self.temperature < _SAMPLING_EPS:

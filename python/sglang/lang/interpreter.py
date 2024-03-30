@@ -212,7 +212,7 @@ class StreamExecutor:
 
         # For fork/join
         self.fork_start_text_pos = None
-        self.logits_ = None
+        self.scores_ = None
 
         # Worker thread
         self.use_thread = use_thread
@@ -284,9 +284,9 @@ class StreamExecutor:
         self.sync()
         return self.text_
     
-    def logits(self):
+    def scores(self):
         self.sync()
-        return self.logits_
+        return self.scores_
 
     def messages(self):
         self.sync()
@@ -439,7 +439,7 @@ class StreamExecutor:
             if sampling_params.forward_only == False:
                 self.text_ += comp
             else:
-                self.logits_ = comp
+                self.scores_ = comp
             self.variables[name] = comp
             self.meta_info[name] = meta_info
             self.variable_event[name].set()
@@ -455,7 +455,7 @@ class StreamExecutor:
                 if sampling_params.forward_only == False:
                     self.text_ += comp
                 else:
-                    self.logits_ = comp
+                    self.scores_ = comp
                 self.variables[name] += comp
                 self.meta_info[name] = meta_info
                 self.stream_var_event[name].set()
@@ -588,7 +588,7 @@ class StreamExecutor:
             "dtype",
             "regex",
             "forward_only",
-            "last_token_id",
+            "logits_require_id",
         ]:
             value = getattr(sampling_params, item, None)
             if value is not None:
@@ -664,8 +664,8 @@ class ProgramState:
     def text(self):
         return self.stream_executor.text()
     
-    def logits(self):
-        return self.stream_executor.logits()
+    def scores(self):
+        return self.stream_executor.scores()
 
     def messages(self):
         return self.stream_executor.messages()
