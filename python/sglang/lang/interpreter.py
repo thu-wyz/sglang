@@ -212,7 +212,11 @@ class StreamExecutor:
 
         # For fork/join
         self.fork_start_text_pos = None
+
+        # For scores
         self.scores_ = None
+        self.score_backend = None
+
 
         # Worker thread
         self.use_thread = use_thread
@@ -254,6 +258,9 @@ class StreamExecutor:
             self.variable_event[name].wait()
         ret = self.meta_info.get(name, None)
         return ret
+    
+    def set_score_backend(self, score_backend):
+        self.score_backend = score_backend
 
     def fork(self, number: int, position_ids_offset: Optional[List[int]] = None):
         self.submit(SglCommitLazy())
@@ -392,9 +399,14 @@ class StreamExecutor:
                         sampling_params.max_new_tokens, self.api_num_spec_tokens
                     )
                     sampling_params.stop = None
-                    self.speculated_text, meta_info = self.backend.generate(
-                        self, sampling_params=sampling_params
-                    )
+                    if sampling_params.forward_only:
+                       self.speculated_text, meta_info = self.score_backend.generate(
+                            self, sampling_params=sampling_params
+                        )
+                    else: 
+                        self.speculated_text, meta_info = self.backend.generate(
+                            self, sampling_params=sampling_params
+                        )
 
                 def find_stop():
                     if isinstance(stop, str):
@@ -433,9 +445,14 @@ class StreamExecutor:
                 else:
                     raise ValueError("Wrong type of stop in sampling parameters.")
             else:
-                comp, meta_info = self.backend.generate(
-                    self, sampling_params=sampling_params
-                )
+                if sampling_params.forward_only:
+                    comp, meta_info = self.score_backend.generate(
+                        self, sampling_params=sampling_params
+                    )
+                else:
+                    comp, meta_info = self.backend.generate(
+                        self, sampling_params=sampling_params
+                    )
             if sampling_params.forward_only == False:
                 self.text_ += comp
             else:
@@ -444,9 +461,14 @@ class StreamExecutor:
             self.meta_info[name] = meta_info
             self.variable_event[name].set()
         else:
-            generator = self.backend.generate_stream(
-                self, sampling_params=sampling_params
-            )
+            if sampling_params.forward_only:
+                generator = self.score_backend.generate_stream(
+                    self, sampling_params=sampling_params
+                )
+            else:
+                generator = self.backend.generate_stream(
+                    self, sampling_params=sampling_params
+                )
 
             self.stream_var_event[name].set()
 
@@ -666,6 +688,9 @@ class ProgramState:
     
     def scores(self):
         return self.stream_executor.scores()
+    
+    def set_score_backend(self, score_backend):
+        self.stream_executor.set_score_backend(score_backend)
 
     def messages(self):
         return self.stream_executor.messages()
