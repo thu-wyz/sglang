@@ -196,6 +196,7 @@ class StreamExecutor:
 
         # For completion
         self.text_ = ""  # The full text
+        self.text_ready_ = False
 
         # For speculative execution
         self.speculated_text = ""
@@ -215,6 +216,7 @@ class StreamExecutor:
 
         # For scores
         self.scores_ = None
+        self.score_ready_ = False
         self.score_backend = None
 
 
@@ -294,6 +296,12 @@ class StreamExecutor:
     def scores(self):
         self.sync()
         return self.scores_
+    
+    def text_ready(self):
+        return self.text_ready_
+    
+    def score_ready(self):
+        return self.score_ready_
 
     def messages(self):
         self.sync()
@@ -385,6 +393,7 @@ class StreamExecutor:
     def _execute_gen(self, expr: SglGen):
         sampling_params = self._resolve_sampling_params(expr.sampling_params)
         name = expr.name
+        self.variable_event[name].clear()
 
         if not self.stream:
             if self.api_num_spec_tokens is not None:
@@ -400,7 +409,7 @@ class StreamExecutor:
                     )
                     sampling_params.stop = None
                     if sampling_params.forward_only:
-                       self.speculated_text, meta_info = self.score_backend.generate(
+                        self.speculated_text, meta_info = self.score_backend.generate(
                             self, sampling_params=sampling_params
                         )
                     else: 
@@ -455,8 +464,10 @@ class StreamExecutor:
                     )
             if sampling_params.forward_only == False:
                 self.text_ += comp
+                self.text_ready_ = True
             else:
                 self.scores_ = comp
+                self.score_ready_ = True
             self.variables[name] = comp
             self.meta_info[name] = meta_info
             self.variable_event[name].set()
@@ -685,6 +696,18 @@ class ProgramState:
 
     def text(self):
         return self.stream_executor.text()
+    
+    def text_ready(self):
+        return self.stream_executor.text_ready()
+    
+    def score_ready(self):
+        return self.stream_executor.score_ready()
+    
+    def text_prepare(self):
+        self.stream_executor.text_ready_ = False
+    
+    def score_prepare(self):
+        self.stream_executor.score_ready_ = False
     
     def scores(self):
         return self.stream_executor.scores()
